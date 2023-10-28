@@ -1,4 +1,5 @@
-from typing import Callable, Generator, TextIO
+from collections.abc import Callable, Generator
+from typing import TextIO
 
 from misc import identity, T
 
