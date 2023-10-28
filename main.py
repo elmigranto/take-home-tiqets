@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 from args import Args
 from inout import read_csv
-from misc import pp, pf, print_error, resolve_from_cwd
+from misc import pf, print_error, resolve_from_cwd
 from values import Barcode, Database, Order
 
 
@@ -14,11 +14,8 @@ def main(args: Args):
     for malformed in rejected:
         print_error(f"[Rejected]: {pf(malformed)}")
 
-    for order in db.orders():
-        pp(order)
-
-    for barcode in db.barcodes():
-        pp(barcode)
+    for order in db.customer_orders():
+        print(order)
 
     if args.debug_output is not None:
         db.to_file(

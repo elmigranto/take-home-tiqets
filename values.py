@@ -30,6 +30,13 @@ class Barcode:
 
 
 @dataclass(frozen=True)
+class CustomerOrder:
+    customer_id: int
+    order_id: int
+    barcodes: str # todo
+
+
+@dataclass(frozen=True)
 class Database:
     db: SQLiteDatabase
 
@@ -40,6 +47,25 @@ class Database:
     def barcodes(self) -> Generator[Order, None, None]:
         cursor = self.db.execute("select id, order_id from barcodes order by id")
         yield from [Barcode(id, oid) for (id, oid) in cursor]
+
+    def customer_orders(self) -> Generator[CustomerOrder, None, None]:
+        cursor = self.db.execute("""
+            select
+              orders.customer_id, 
+              orders.id as order_id,
+              group_concat(barcodes.id, ', ') as barcodes
+            from 
+              orders
+              inner join barcodes on barcodes.order_id = orders.id
+            group by 
+              orders.customer_id,
+              orders.id
+            order by
+              orders.customer_id,
+              orders.id
+            """)
+
+        yield from [CustomerOrder(cid, oid, bbs) for (cid, oid, bbs) in cursor]
 
     def to_file(self, path: Path, overwriting_existing_file: bool):
         # Connection#backup() did not work right away for some reason,
@@ -56,17 +82,18 @@ class Database:
     @staticmethod
     def init_db() -> SQLiteDatabase:
         db = connect(':memory:')
-        db.executescript("""
-            create table orders (
-                id int primary key check (id > 0),
-                customer_id int check (customer_id > 0)
-            ) strict;
-            
-            create table barcodes (
-                id text primary key check (length(id) > 0),
-                order_id int references orders(id) 
-            ) strict;
-            """)
+        with db:
+            db.executescript("""
+                create table orders (
+                    id int primary key check (id > 0),
+                    customer_id int check (customer_id > 0)
+                ) strict;
+                
+                create table barcodes (
+                    id text primary key check (length(id) > 0),
+                    order_id int references orders(id) 
+                ) strict;
+                """)
 
         return db
 
@@ -89,15 +116,16 @@ class Database:
             else:
                 good_barcodes[barcode.id] = barcode
 
-        # todo: batching / transactions
+        # todo: batching
         db = cls.init_db()
-        db.executemany(
-            "insert into orders (id, customer_id) values (?, ?)",
-            [(order.order_id, order.customer_id) for order in good_orders.values()]
-        )
-        db.executemany(
-            "insert into barcodes (id, order_id) values (?, ?)",
-            [(barcode.id, barcode.order_id) for barcode in good_barcodes.values()]
-        )
+        with db:
+            db.executemany(
+                "insert into orders (id, customer_id) values (?, ?)",
+                [(order.order_id, order.customer_id) for order in good_orders.values()]
+            )
+            db.executemany(
+                "insert into barcodes (id, order_id) values (?, ?)",
+                [(barcode.id, barcode.order_id) for barcode in good_barcodes.values()]
+            )
 
         return Database(db), rejected
