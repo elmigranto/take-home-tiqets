@@ -33,7 +33,16 @@ class Barcode:
 class CustomerOrder:
     customer_id: int
     order_id: int
-    barcodes: str # todo
+    barcodes: str  # todo: having this as a string might not be ideal later, but works well with SQL query.
+
+    def __str__(self):
+        return f"{self.customer_id}, {self.order_id}, [{self.barcodes}]"
+
+
+@dataclass(frozen=True)
+class RejectedValue:
+    value: Order | Barcode
+    reason: str
 
 
 @dataclass(frozen=True)
@@ -98,21 +107,24 @@ class Database:
         return db
 
     @classmethod
-    def of(cls, orders: Iterable[Order], barcodes: Iterable[Barcode]) -> tuple[Database, list[Order | Barcode]]:
+    def of(cls, orders: Iterable[Order], barcodes: Iterable[Barcode]) -> tuple[Database, list[RejectedValue]]:
         good_orders: dict[int, Order] = dict()
         good_barcodes: dict[str, Barcode] = dict()
         rejected = list()
 
         # todo: cleanup
+        # This validation is not ok. For example, "no order without barcodes" is possible only
+        # after we have seen all the data, so doing duplicate check now does not buy us much.
+        # Buffering all of this in memory takes it from "annoying" to "impractical".
         for order in orders:
             if order.order_id in good_orders:
-                rejected.append(order)
+                rejected.append(RejectedValue(order, "Duplicate order"))
             else:
                 good_orders[order.order_id] = order
 
         for barcode in barcodes:
             if barcode.id in good_barcodes:
-                rejected.append(barcode)
+                rejected.append(RejectedValue(barcode, "Duplicate barcode"))
             else:
                 good_barcodes[barcode.id] = barcode
 

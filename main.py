@@ -6,13 +6,13 @@ from values import Barcode, Database, Order
 
 
 def main(args: Args):
-    db, rejected = Database.of(
+    db, rejections = Database.of(
         orders=read_csv(args.orders, Order.from_csv_line),
         barcodes=read_csv(args.barcodes, Barcode.from_csv_line),
     )
 
-    for malformed in rejected:
-        print_error(f"[Rejected]: {pf(malformed)}")
+    for r in rejections:
+        print_error(f"[Rejected] {r.reason}: {pf(r.value)}")
 
     for order in db.customer_orders():
         print(order)
