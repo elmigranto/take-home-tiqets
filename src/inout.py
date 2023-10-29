@@ -1,7 +1,7 @@
 from collections.abc import Callable, Generator, Iterable
 from itertools import islice, filterfalse
 
-from src.misc import identity, T
+from misc import identity, T
 
 
 def csv_nonvalue(s: str) -> bool:
@@ -48,4 +48,4 @@ def parse_csv_file(path: str,
                    ) -> Generator[T, None, None]:
     """Parses text file's lines using `parse_csv_lines()`."""
     with open(path) as file:
-        yield from parse_csv_lines(file, parse_line, contains_header)
+        yield from parse_csv_lines(map(str.strip, file), parse_line, contains_header)

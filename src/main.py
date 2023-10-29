@@ -13,8 +13,14 @@ def main(args: Args):
     for r in rejections:
         print_error(f"[Rejected] {r.reason}: {pf(r.value)}")
 
-    for order in db.customer_orders():
-        print(order)
+    get_iter = {
+        'orders': db.customer_orders,
+        'top5': db.top_five_customers,
+        'unsold': db.unsold_barcodes,
+    }[args.command]
+
+    for item in get_iter():
+        print(item)
 
     if args.debug_output is not None:
         db.to_file(

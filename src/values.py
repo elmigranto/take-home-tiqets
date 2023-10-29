@@ -6,6 +6,8 @@ from pathlib import Path
 from sqlite3 import connect, Connection as SQLiteDatabase
 from typing import Optional
 
+from misc import multiline
+
 
 @dataclass(frozen=True)
 class Order:
@@ -40,6 +42,14 @@ class CustomerOrder:
 
 
 @dataclass(frozen=True)
+class CustomerStatistics:
+    customer_id: int
+    amount_of_tickets: int
+
+    def __str__(self):
+        return f"{self.customer_id}, {self.amount_of_tickets}"
+
+@dataclass(frozen=True)
 class RejectedValue:
     value: Order | Barcode
     reason: str
@@ -58,7 +68,7 @@ class Database:
         yield from [Barcode(id, oid) for (id, oid) in cursor]
 
     def customer_orders(self) -> Generator[CustomerOrder, None, None]:
-        cursor = self.db.execute("""
+        cursor = self.db.execute(multiline("""
             select
               orders.customer_id, 
               orders.id as order_id,
@@ -70,11 +80,32 @@ class Database:
               orders.customer_id,
               orders.id
             order by
-              orders.customer_id,
-              orders.id
-            """)
+              orders.customer_id asc,
+              orders.id asc
+            """))
 
         yield from [CustomerOrder(cid, oid, bbs) for (cid, oid, bbs) in cursor]
+
+    def top_five_customers(self):
+        cursor = self.db.execute(multiline("""
+            select 
+              orders.customer_id, 
+              count(distinct barcodes.id) as amount_of_tickets
+            from 
+              orders 
+              inner join barcodes on barcodes.order_id = orders.id
+            group by
+              orders.customer_id having amount_of_tickets > 0
+            order by
+              amount_of_tickets desc,
+              customer_id asc
+            limit 5
+        """))
+
+        yield from [CustomerStatistics() for (cid, cnt) in cursor]
+
+    def unsold_barcodes(self):
+        pass
 
     def to_file(self, path: Path, overwriting_existing_file: bool):
         # Connection#backup() did not work right away for some reason,
