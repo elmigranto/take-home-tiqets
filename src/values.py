@@ -6,7 +6,7 @@ from pathlib import Path
 from sqlite3 import connect, Connection as SQLiteDatabase
 from typing import Optional
 
-from misc import multiline
+from misc import multiline, T
 
 
 @dataclass(frozen=True)
@@ -68,7 +68,7 @@ class Database:
         yield from [Barcode(id, oid) for (id, oid) in cursor]
 
     def customer_orders(self) -> Generator[CustomerOrder, None, None]:
-        cursor = self.db.execute(multiline("""
+        return self._yield_from_cursor(CustomerOrder, """
             select
               orders.customer_id, 
               orders.id as order_id,
@@ -82,12 +82,10 @@ class Database:
             order by
               orders.customer_id asc,
               orders.id asc
-            """))
+            """)
 
-        yield from [CustomerOrder(cid, oid, bbs) for (cid, oid, bbs) in cursor]
-
-    def top_five_customers(self):
-        cursor = self.db.execute(multiline("""
+    def top_five_customers(self) -> Generator[CustomerStatistics, None, None]:
+        return self._yield_from_cursor(CustomerStatistics, """
             select 
               orders.customer_id, 
               count(distinct barcodes.id) as amount_of_tickets
@@ -100,12 +98,14 @@ class Database:
               amount_of_tickets desc,
               customer_id asc
             limit 5
-        """))
+        """)
 
-        yield from [CustomerStatistics() for (cid, cnt) in cursor]
+    def amount_of_unsold_tickets(self) -> int:
+        iter = self._yield_from_cursor(int, "select count(*) from barcodes where order_id is null")
+        return list(iter)[0]
 
-    def unsold_barcodes(self):
-        pass
+    def _yield_from_cursor(self, ctor: type(T), sql: str) -> Generator[T, None, None]:
+        yield from [ctor(*t) for t in self.db.execute(multiline(sql))]
 
     def to_file(self, path: Path, overwriting_existing_file: bool):
         # Connection#backup() did not work right away for some reason,
