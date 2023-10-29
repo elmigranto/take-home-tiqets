@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 from args import Args
 from inout import read_csv
 from misc import pf, print_error, resolve_from_cwd

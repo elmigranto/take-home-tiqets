@@ -1,20 +1,28 @@
 # <img valign="bottom" src="https://www.tiqets.com/static/assets/logos/tiqets-logo-primary-600.svg" /> Take Home — Aleksei Zabrodskii
 
-## Quick start
-
-I used Python 3.11.6 with [`venv`](https://docs.python.org/3/library/venv.html). Since there are no external dependencies, chances are that `python3` binary already existing in your `PATH` will work as well.
+I used Python 3.11.6 with [`venv`](https://docs.python.org/3/library/venv.html). Since there are no external dependencies, chances are that `python3` binary already existing in your `PATH` will work as well. I made a small wrapper with optional watch mode for development. 
 
 ```shell
 # Run using inputs from the assignment's zip-file:
-./main.py
+./run
 
-# Custom CSVs:
-./main.py \
+# Use specific CSVs:
+./run \
   --orders ./data/orders.csv \
   --barcodes ./data/barcodes.csv
   
 # More options:
-./main.py --help
+./run --help
+
+# Information about ./run itself:
+./run help
+```
+
+You can trigger entrypoint directly and pass the same arguments that `run` accepts (technically, `run` forwards its arguments to entrypoint except for specific shortcuts like `./run test`).
+
+```shell
+python3 src/main.py
+python3 src/main.py --help
 ```
 
 Hope everything runs with 0 issues 🤞

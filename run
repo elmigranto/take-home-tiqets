@@ -1,0 +1,77 @@
+#!/usr/bin/env bash
+set -o errexit \
+    -o pipefail \
+    -o nounset \
+    -o noglob
+
+# Basic script runner.
+#
+#  ./run   # executes given command with optional arguments
+#  ./runw  # executes ./run with optional arguments on file changes
+#
+# To show app's help message, use:
+#
+#  ./run --help
+#
+# When first argument to ./run(w) is one of the following commands,
+# instead of running the app, a different action is taken.
+#
+#  Command | Action
+#  --------|--------------------------
+#  help    | shows this help message
+#  test    | executes the test suite
+#
+# Examples:
+#
+#  ./run              # runs main app with default arguments
+#  ./runw test        # runs tests on each source file change
+#  ./runw -d last.db  # reruns the app on changes saving resulting SQLite to ./last.db.
+#
+# Note: nodemon is required to run in watch mode
+#       https://nodemon.io/
+
+cwd=$(pwd -P) && readonly cwd
+argc=$# && readonly argc
+argv=("${@:1}") && readonly argv
+__dirname=$(cd "$(dirname "$0")" && pwd -P) && readonly __dirname
+__basename=$(basename "$0") && readonly __basename
+__filename="$__dirname/$__basename" && readonly __filename
+
+RUNW_NO_ARGUMENTS='__runw_called_with_no_arguments_3d9ab125c15e4c28b5dc36928b13f460' && readonly RUNW_NO_ARGUMENTS
+SRC_DIR="$__dirname/src"
+MAIN_FILE="$SRC_DIR/main.py" && readonly MAIN_FILE
+
+function main {
+  if [ "$__basename" == 'runw' ]; then
+    nodemon \
+      --verbose \
+      --watch "./run" \
+      --watch "./src/" \
+      --watch "./data/" \
+      --ext "py,csv" \
+      --exec ./run -- "${argv[@]:-$RUNW_NO_ARGUMENTS}"
+  else
+    if [ "$argc" -eq 0 ] || [ "${argv[0]}" == "$RUNW_NO_ARGUMENTS" ]; then
+      python3 "$MAIN_FILE"
+    else
+      case "${argv[0]}" in
+        test)
+          find "$SRC_DIR" -type f -and -name '*_test.py' -print0 | xargs --null python3 -m unittest
+          ;;
+
+        # Prints all lines from this file start begin with "#".
+        # with the exception of the shebang (first one).
+        help)
+          grep '^#' "$__filename" | tail -n +2 | cut -c 3-
+          ;;
+
+        *)
+          python3 "$MAIN_FILE" "${argv[@]}"
+          ;;
+      esac
+    fi
+  fi
+} && readonly -f main
+
+main
+exit 0
