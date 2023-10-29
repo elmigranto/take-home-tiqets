@@ -2,12 +2,13 @@ from os import getcwd
 from pathlib import Path
 from pprint import pformat
 from sys import stderr
-from typing import TypeVar
+from textwrap import dedent
+from typing import TypeVar, TextIO
 
 T = TypeVar('T')
 
 
-def pp(value: T, destination: type(stderr) = stderr) -> T:
+def pp(value: T, destination: TextIO = stderr) -> T:
     """Pretty-prints a value to a destination and returns it."""
     print(pf(value), file=destination)
     return value
@@ -37,3 +38,7 @@ def resolve_from_cwd(path: str, throw_if_missing: bool = True):
 
 def identity(value: T) -> T:
     return value
+
+
+def multiline(string: str) -> str:
+    return dedent(string).strip()
